@@ -1,7 +1,7 @@
 {
-  "name": "electron-quick-start",
+  "name": "Penguins COCO marking tool",
   "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "description": "Penguins COCO marking tool",
   "main": "main.js",
   "scripts": {
     "start": "electron ."

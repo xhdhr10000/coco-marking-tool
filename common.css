@@ -1,0 +1,14 @@
+#point_list {
+    padding: 0;
+    border: 1px solid gray;
+    border-radius: 5px;
+}
+
+.point {
+    padding: 4px;
+}
+
+.point.selected {
+    background-color: #429cfa;
+    color: white;
+}

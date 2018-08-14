@@ -5,12 +5,14 @@ const getTool = fileJS.getTool;
 const currentTool = fileJS.currentTool;
 var image = document.getElementById('image');
 var btSave = document.getElementById('btSave');
+var ulPoints = document.getElementById('point_list');
 var isMouseDown = false;
 var isMouseMoved = false;
 var mouseDownPoint = { x: 0, y: 0 };
-var points = {};
+var points = [];
+var ppoint = 0;
 var cocoImage;
-var annotation;
+var annotations;
 
 var canvas = null;
 
@@ -46,22 +48,108 @@ function createCanvas() {
 }
 
 function getAnnotations() {
-    points = {};
-    annotation = coco.getAnnotation(cocoImage.id);
-    if (!annotation) return;
-    if (annotation.bbox && annotation.bbox.length == 4)
-        points.body = { x: annotation.bbox[0], y: annotation.bbox[1], w: annotation.bbox[2], h: annotation.bbox[3] };
-    for (var i = 1; i < fileJS.configs().length; i++) {
-        if (annotation.keypoints[(i - 1) * 3 + 2] != 0)
-            points[fileJS.configs()[i]] = { x: annotation.keypoints[(i - 1) * 3], y: annotation.keypoints[(i - 1) * 3 + 1] };
+    points = [];
+    while (ulPoints.firstChild) ulPoints.removeChild(ulPoints.firstChild);
+    annotations = coco.getAnnotations(cocoImage.id);
+    if (!annotations) return;
+    for (var annotation of annotations) {
+        var point = {};
+        if (annotation.bbox && annotation.bbox.length == 4)
+            point.body = { x: annotation.bbox[0], y: annotation.bbox[1], w: annotation.bbox[2], h: annotation.bbox[3] };
+        for (var i = 1; i < fileJS.configs().length; i++) {
+            if (annotation.keypoints[(i - 1) * 3 + 2] != 0)
+                point[fileJS.configs()[i]] = { x: annotation.keypoints[(i - 1) * 3], y: annotation.keypoints[(i - 1) * 3 + 1] };
+        }
+
+        var li = document.createElement('div');
+        li.setAttribute('id', annotation.id);
+        li.addEventListener('click', onClickPerson, false);
+
+        var button = document.createElement('button');
+        button.innerHTML = '删除';
+        button.style.cssFloat = 'right';
+        button.setAttribute('index', points.length);
+        button.addEventListener('click', onClickDeletePerson, false);
+        li.appendChild(button);
+        ulPoints.appendChild(li);
+
+        points.push(point);
     }
+    if (annotations.length == 0) onClickAddPerson();
+    else appendAddPerson();
+}
+
+function appendAddPerson() {
+    var li = document.createElement('div');
+    li.innerHTML = '新建';
+    li.className = 'point';
+    li.addEventListener('click', onClickAddPerson, false);
+    ulPoints.appendChild(li);
+
+    updatePersons();
+}
+
+function onClickPerson(event) {
+    console.log(event);
+    var index = event.target.getAttribute('index');
+    console.log(index);
+    ppoint = Number(index);
+    updatePersons();
+}
+
+function onClickAddPerson(event) {
+    if (ulPoints.lastChild) ulPoints.removeChild(ulPoints.lastChild);
+    var li = document.createElement('div');
+    li.addEventListener('click', onClickPerson, false);
+    ulPoints.appendChild(li);
+
+    ppoint = points.length;
+    points.push({});
+    appendAddPerson();
+}
+
+function updatePersons() {
+    var i = 0;
+    for (var child of ulPoints.children) {
+        if (i >= ulPoints.children.length - 1) break;
+        child.setAttribute('index', i);
+        child.innerHTML = (i + 1) + '. id = ' + child.getAttribute('id');
+        child.className = 'point' + (child.getAttribute('index') == ppoint.toString() ? ' selected' : '');
+
+        var button = document.createElement('button');
+        button.innerHTML = '删除';
+        button.style.cssFloat = 'right';
+        button.setAttribute('index', i);
+        button.addEventListener('click', onClickDeletePerson, false);
+        child.appendChild(button);
+        i++;
+    }
+}
+
+function onClickDeletePerson(event) {
+    console.log(event);
+    event.preventDefault();
+    event.stopPropagation();
+
+    var index = event.target.getAttribute('index');
+    if (ppoint > 1 && ppoint >= Number(index)) ppoint--;
+    points.splice(Number(index), 1);
+
+    for (var li of ulPoints.children) {
+        if (li.getAttribute('index') == index) {
+            ulPoints.removeChild(li);
+            break;
+        }
+    }
+    updatePersons();
+    render();
 }
 
 function onMouseClick(event) {
     console.log('click');
     var point = toCanvas(event.layerX, event.layerY);
     if (currentTool().config != 'body')
-        points[currentTool().config] = point;
+        points[ppoint][currentTool().config] = point;
 }
 
 function onMouseDown(event) {
@@ -69,7 +157,7 @@ function onMouseDown(event) {
     isMouseDown = true;
     mouseDownPoint = toCanvas(event.layerX, event.layerY);
     if (currentTool().config == 'body')
-        points[currentTool().config] = toCanvas(event.layerX, event.layerY);
+        points[ppoint][currentTool().config] = toCanvas(event.layerX, event.layerY);
 }
 
 function onMouseMove(event) {
@@ -79,10 +167,10 @@ function onMouseMove(event) {
 
         var point = toCanvas(event.layerX, event.layerY);
         if (currentTool().config == 'body') {
-            points[currentTool().config].w = point.x - mouseDownPoint.x;
-            points[currentTool().config].h = point.y - mouseDownPoint.y;
+            points[ppoint][currentTool().config].w = point.x - mouseDownPoint.x;
+            points[ppoint][currentTool().config].h = point.y - mouseDownPoint.y;
         } else {
-            points[currentTool().config] = point;
+            points[ppoint][currentTool().config] = point;
         }
         console.log(points);
         render();
@@ -97,10 +185,10 @@ function onMouseUp(event) {
 
     var point = toCanvas(event.layerX, event.layerY);
     if (currentTool().config == 'body') {
-        points['body'].w = Math.abs(point.x - mouseDownPoint.x);
-        points['body'].h = Math.abs(point.y - mouseDownPoint.y);
-        points['body'].x = Math.min(point.x, points['body'].x);
-        points['body'].y = Math.min(point.y, points['body'].y);
+        points[ppoint]['body'].w = Math.abs(point.x - mouseDownPoint.x);
+        points[ppoint]['body'].h = Math.abs(point.y - mouseDownPoint.y);
+        points[ppoint]['body'].x = Math.min(point.x, points[ppoint]['body'].x);
+        points[ppoint]['body'].y = Math.min(point.y, points[ppoint]['body'].y);
     }
     render();
 }
@@ -112,7 +200,10 @@ function onMouseLeave(event) {
 }
 
 function onClickSave(event) {
-    coco.setAnnotation(cocoImage.id, annotation ? annotation.id : null, points);
+    for (var i = 0; i < points.length; i++)
+        coco.setAnnotation(cocoImage.id, annotations[i] ? annotations[i].id : null, points[i]);
+    coco.writeCoco();
+    getAnnotations();
 }
 
 function render() {
@@ -121,27 +212,29 @@ function render() {
     console.log(context.lineWidth);
     var width = Math.max(Math.max(image.naturalWidth / image.width, image.naturalHeight / image.height), 1) * 2;
     var widthBorder = width + 2 * Math.min(1, Math.max(image.naturalWidth / image.width, image.naturalHeight / image.height));
-    for (var config in points) {
-        var point = points[config];
-        if (!point) continue;
-        if (config == 'body') {
-            context.beginPath();
-            context.lineWidth = widthBorder;
-            context.strokeStyle = '#000000';
-            context.strokeRect(point.x, point.y, point.w, point.h);
-            context.beginPath();
-            context.lineWidth = width;
-            context.strokeStyle = getTool(config).color;
-            context.strokeRect(point.x, point.y, point.w, point.h);
-        } else {
-            context.beginPath();
-            context.fillStyle = '#000000';
-            context.arc(point.x, point.y, widthBorder, 0, Math.PI * 2);
-            context.fill();
-            context.beginPath();
-            context.fillStyle = getTool(config).color;
-            context.arc(point.x, point.y, width, 0, Math.PI * 2);
-            context.fill();
+    for (var pt of points) {
+        for (var config in pt) {
+            var point = pt[config];
+            if (!point) continue;
+            if (config == 'body') {
+                context.beginPath();
+                context.lineWidth = widthBorder;
+                context.strokeStyle = '#000000';
+                context.strokeRect(point.x, point.y, point.w, point.h);
+                context.beginPath();
+                context.lineWidth = width;
+                context.strokeStyle = getTool(config).color;
+                context.strokeRect(point.x, point.y, point.w, point.h);
+            } else {
+                context.beginPath();
+                context.fillStyle = '#000000';
+                context.arc(point.x, point.y, widthBorder, 0, Math.PI * 2);
+                context.fill();
+                context.beginPath();
+                context.fillStyle = getTool(config).color;
+                context.arc(point.x, point.y, width, 0, Math.PI * 2);
+                context.fill();
+            }
         }
     }
 }
@@ -162,7 +255,7 @@ window.onresize = function (event) {
 function onKeyDown(event) {
     console.log(event);
     if (event.key == 'Escape') {
-        points[fileJS.currentTool().config] = null;
+        points[ppoint][fileJS.currentTool().config] = null;
         render();
     }
 }

@@ -90,10 +90,12 @@ function setImage(name, width, height, date_captured) {
     return image;
 }
 
-function getAnnotation(image_id) {
+function getAnnotations(image_id) {
     if (!coco || !coco.annotations) return;
+    var annotations = [];
     for (var annotation of coco.annotations)
-        if (annotation.image_id == image_id) return annotation;
+        if (annotation.image_id == image_id) annotations.push(annotation);
+    return annotations;
 }
 
 function setAnnotation(image_id, id, points) {
@@ -108,7 +110,7 @@ function setAnnotation(image_id, id, points) {
                     var config = fileJS.configs()[j];
                     if (config == 'body') {
                         var point = points[config];
-                        coco.annotations[i].bbox = [point.x, point.y, point.w, point.h];
+                        if (point) coco.annotations[i].bbox = [point.x, point.y, point.w, point.h];
                     } else {
                         if (!points[config] || points[config].x == null && points[config].y == null) {
                             keypoints.push(0);
@@ -124,7 +126,6 @@ function setAnnotation(image_id, id, points) {
                 }
                 coco.annotations[i].keypoints = keypoints;
                 coco.annotations[i].num_keypoints = num_keypoints;
-                writeCoco();
                 return coco.annotations[i];
             }
         }
@@ -144,7 +145,7 @@ function setAnnotation(image_id, id, points) {
         var config = fileJS.configs()[i];
         if (config == 'body') {
             var point = points[config];
-            annotation.bbox = [point.x, point.y, point.w, point.h];
+            if (point) annotation.bbox = [point.x, point.y, point.w, point.h];
         } else {
             if (!points[config]) {
                 keypoints.push(0);
@@ -161,7 +162,6 @@ function setAnnotation(image_id, id, points) {
     annotation.num_keypoints = num_keypoints;
     annotation.keypoints = keypoints;
     coco.annotations.push(annotation);
-    writeCoco();
     return annotation;
 }
 
@@ -172,5 +172,5 @@ function getCategory() {
 }
 
 module.exports = {
-    readCoco, getImage, setImage, getAnnotation, setAnnotation, getCategory,
+    readCoco, writeCoco, getImage, setImage, getAnnotations, setAnnotation, getCategory,
 }

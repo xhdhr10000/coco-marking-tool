@@ -8,7 +8,6 @@ var btPrev = document.getElementById('btPrev');
 var btNext = document.getElementById('btNext')
 var image = document.getElementById('image');
 var toolbox = document.getElementById('toolbox');
-var inputConfig = document.getElementById('selectConfig');
 var configs = [];
 var tools = [];
 var toolIndex = 0;
@@ -124,7 +123,6 @@ function onKeyPress(event) {
 inputFiles.addEventListener('change', handleFileSelect, false);
 btPrev.addEventListener('click', onClickPrev, false);
 btNext.addEventListener('click', onClickNext, false);
-// inputConfig.addEventListener('change', onSelectConfig, false);
 document.addEventListener('keypress', onKeyPress, false);
 
 module.exports = {
